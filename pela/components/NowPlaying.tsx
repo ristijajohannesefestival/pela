@@ -10,7 +10,7 @@ interface NowPlayingProps {
 
 export function NowPlaying({ song }: NowPlayingProps) {
   return (
-    <div className="bg-gradient-to-br from-[#1DB954]/20 to-purple-600/20 rounded-3xl p-6 mb-6 border border-[#1DB954]/30">
+    <div className="bg-gradient-to-r from-[#e0c3fc]/10 to-[#8ec5fc]/20 rounded-3xl p-6 mb-6 border border-[#1DB954]/30">
       <div className="flex items-center gap-4">
         <div className="relative">
           <img 
@@ -59,7 +59,7 @@ function AudioWave() {
       {bars.map((height, i) => (
         <motion.div
           key={i}
-          className="w-1 bg-gradient-to-t from-[#1DB954] to-purple-500 rounded-full"
+          className="w-1 bg-gradient-to-r from-[#e0c3fc] to-[#8ec5fc] rounded-full"
           animate={{
             height: [`${height * 100}%`, `${((height + 0.3) % 1) * 100}%`, `${height * 100}%`],
           }}

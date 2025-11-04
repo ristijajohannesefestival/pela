@@ -9,6 +9,7 @@ import AdminBar from "./AdminBar";
 
 interface VenueAdminProps {
   venueId?: string;
+  onGoAudience?: () => void;
 }
 
 type Device = { id: string; name: string; type: string; is_active: boolean };
@@ -16,8 +17,10 @@ type Device = { id: string; name: string; type: string; is_active: boolean };
 const BASE =
   "https://eahgekmtuyvclxegqolf.supabase.co/functions/v1/make-server-d5eddf57";
 
-export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
-  const [venueId, setVenueId] = useState(initialVenueId || "");
+export function VenueAdmin({ venueId: initialVenueId, onGoAudience }: VenueAdminProps) {
+  const venueFromUrl =
+  new URLSearchParams(window.location.search).get("venue") || "";
+  const [venueId, setVenueId] = useState(initialVenueId || venueFromUrl || "");
   const [venueName, setVenueName] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -28,15 +31,27 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
   const [now, setNow] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  // Audience URL (QR jaoks)
   const venueUrl = venueId ? `${window.location.origin}/?venue=${venueId}` : "";
-  const audienceUrl = useMemo(
+
+  const [pin, setPin] = useState("");
+  const [adminToken, setAdminToken] = useState<string | null>(null);
+
+
+    const audienceUrl = useMemo(
     () => (venueId ? `${window.location.origin}/?venue=${venueId}` : ""),
     [venueId]
   );
 
-  const [pin, setPin] = useState("");
-  const [adminToken, setAdminToken] = useState<string | null>(null);
+  function goAudience() {
+    if (!venueId) {
+      alert("Genereeri kõigepealt venue ID.");
+      return;
+    }
+
+    window.history.pushState({}, "", audienceUrl);
+
+    onGoAudience?.();
+  }
 
   // admin token localstoragest
   useEffect(() => {
@@ -63,7 +78,7 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
     // Kui tuldi Spotify callbackist, URL saab ?linked=1
     const u = new URL(window.location.href);
     if (u.searchParams.get("linked") === "1") setLinked(true);
-    loadNow();
+    if (venueId) loadNow(); 
   }, [venueId]);
 
   const generateVenueId = () => {
@@ -195,16 +210,17 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
   }
 
   async function loadNow() {
-    try {
-      const r = await fetch(`${BASE}/now-playing/${encodeURIComponent(venueId)}`);
-      const j = await r.json();
-      setNow(j.nowPlaying || null);
-    } catch {
+    if (!venueId) {
       setNow(null);
+      return;
     }
+    const r = await fetch(`${BASE}/now-playing/${encodeURIComponent(venueId)}`);
+    const j = await r.json();
+    setNow(j.nowPlaying || null);
   }
 
-  useEffect(() => { loadNow(); }, [venueId]);
+
+  useEffect(() => { if (venueId) loadNow(); }, [venueId]);
 
   async function adminLogout() {
     if (!venueId || !adminToken) return saveToken(null);
@@ -218,6 +234,7 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
 
 
   return (
+  <div className="bg-gradient-to-t from-[#e0c3fc] to-[#8ec5fc]">
     <div className="max-w-2xl mx-auto px-4 py-8 bg-black">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -229,9 +246,16 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
         </h1>
         <p className="text-white">Loo QR-kood ja halda Spotify taasesitust</p>
       </motion.div>
+        <Button variant="outline" className="border-gray-700" onClick={goAudience}>
+          ← Tagasi queue’sse
+        </Button>
+
 
       {/* admin login */}
-      <AdminBar venueId={venueId} />
+      <AdminBar
+        venueId={venueId}
+        onGoAdmin={() => { /* no-op adminis */ }} 
+      />
 
 
 
@@ -419,6 +443,7 @@ export function VenueAdmin({ venueId: initialVenueId }: VenueAdminProps) {
           </div>
         </div>
       </Card>
+    </div>
     </div>
   );
 }

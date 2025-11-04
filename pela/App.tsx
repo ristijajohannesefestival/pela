@@ -232,7 +232,12 @@ useEffect(() => {
 
   // Show admin panel if requested
   if (showAdmin) {
-    return <VenueAdmin venueId={venueId !== 'demo-venue' ? venueId : undefined} />;
+    return (
+      <VenueAdmin
+        venueId={venueId !== 'demo-venue' ? venueId : undefined}
+        onGoAudience={() => setShowAdmin(false)}
+      />
+    );
   }
 
   if (isLoading) {
@@ -244,7 +249,7 @@ useEffect(() => {
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             className="w-12 h-12 border-4 border-[#1DB954] border-t-transparent rounded-full mx-auto mb-4"
           />
-          <p className="text-gray-400">Laadin queue'd...</p>
+          <p className="text-gray-400">Loading the queue...</p>
         </div>
       </div>
     );
@@ -274,7 +279,7 @@ useEffect(() => {
           }}
         />
         <motion.div
-          className="absolute bottom-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-[120px]"
+          className="absolute bottom-0 right-0 w-96 h-96 bg-[#8ec5fc]/10 rounded-full blur-[120px]"
           animate={{
             x: [0, -100, 0],
             y: [0, -50, 0],
@@ -296,8 +301,8 @@ useEffect(() => {
           className="text-center mb-8"
         >
           <div className="flex items-center justify-center gap-2 mb-2">
-            <h1 className="text-3xl bg-gradient-to-r from-[#1DB954] to-purple-500 bg-clip-text text-transparent">
-              Hype Queue
+            <h1 className="text-3xl bg-gradient-to-r from-[#e0c3fc] to-[#8ec5fc] bg-clip-text text-transparent">
+              pela
             </h1>
             <motion.div
               animate={{
@@ -307,7 +312,7 @@ useEffect(() => {
               className="w-2 h-2 bg-[#1DB954] rounded-full"
             />
           </div>
-          <p className="text-gray-400 text-sm">Hääletusaktiivsete lugude järjekord</p>
+          <p className="text-gray-400 text-sm">lugude järjekord h22letustega</p>
           
           {/* Admin link for venue owners */}
           {venueId === 'demo-venue' && (
@@ -318,7 +323,6 @@ useEffect(() => {
               }}
               className="mt-2 text-xs text-gray-600 hover:text-[#1DB954] transition-colors flex items-center gap-1 mx-auto"
             >
-              Loo oma venue
             </button>
           )}
         </motion.div>
@@ -330,7 +334,7 @@ useEffect(() => {
         {/* Queue */}
         <div className="space-y-3 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-gray-400 text-sm uppercase tracking-wider">Järgmisena</h2>
+            <h2 className="text-gray-400 text-sm uppercase tracking-wider">next up</h2>
             <div className="flex items-center gap-2 text-gray-500 text-sm">
               <Sparkles className="w-4 h-4" />
               <span>Live</span>
@@ -339,8 +343,8 @@ useEffect(() => {
 
           {queue.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              <p>Järjekord on tühi</p>
-              <p className="text-sm mt-2">Ole esimene, kes lisab laulu!</p>
+              <p>jarjekord on tuhi</p>
+              <p className="text-sm mt-2">ole esimene, kes lisab laulu</p>
             </div>
           ) : (
             <AnimatePresence mode="popLayout">
@@ -364,7 +368,7 @@ useEffect(() => {
           transition={{ delay: 0.5 }}
           className="text-center text-gray-600 text-xs mt-8"
         >
-          <p>🎵 Hype Queue powered by Spotify</p>
+          <p>pela powered by Spotify</p>
         </motion.div>
       </div>
 
@@ -377,7 +381,7 @@ useEffect(() => {
       >
         <Button
           onClick={handleOpenAddSheet}
-          className="h-16 px-8 bg-gradient-to-r from-[#1DB954] to-[#1ed760] hover:from-[#1ed760] hover:to-[#1DB954] text-white rounded-full shadow-2xl shadow-[#1DB954]/50 relative overflow-hidden group"
+          className="h-16 px-8 bg-gradient-to-r from-[#1DB954] to-[#1ed760] hover:from-[#1ed760] hover:to-[#1DB954] hover:rotate-180 hover:scale-110 text-white rounded-full shadow-2xl shadow-[#1DB954]/50 relative overflow-hidden group cursor-pointer"
         >
           <motion.div
             className="absolute inset-0 bg-white/20"
@@ -393,7 +397,7 @@ useEffect(() => {
           />
           <span className="relative flex items-center gap-2">
             <Plus className="w-5 h-5" />
-            <span>Lisa lugu</span>
+            <span>lisa laul</span>
           </span>
         </Button>
       </motion.div>
