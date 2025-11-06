@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Sparkles, Settings } from 'lucide-react';
 import { Button } from './components/ui/button';
-import { NowPlaying } from './components/NowPlaying';
 import { QueueItem } from './components/QueueItem';
 import { AddSongSheet } from './components/AddSongSheet';
+import { PlaybackProgress } from "./components/PlaybackProgress";
+import { NowPlayingCard } from './components/NowPlayingCard';
+import { Plus, Sparkles } from 'lucide-react';
+
 import { 
   fetchQueue, 
   fetchNowPlaying, 
@@ -40,6 +42,42 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [sessionId] = useState(getSessionId());
 
+  const [nowLive, setNowLive] = useState<{
+  startedAt: number | null;
+  duration_ms: number;
+  is_playing: boolean;
+  item: { name: string; artists: string; albumArt: string; uri: string; id: string } | null;
+} | null>(null);
+  const BASE = import.meta.env.VITE_EDGE_BASE as string;
+
+
+useEffect(() => {
+  if (!venueId) return;
+  let alive = true;
+
+  const tick = async () => {
+    try {
+      const r = await fetch(`${BASE}/spotify/now/${encodeURIComponent(venueId)}`, { cache: "no-store" });
+      const j = await r.json();
+      if (!alive) return;
+      setNowLive({
+        startedAt: j.startedAt ?? null,
+        duration_ms: j.duration_ms ?? 0,
+        is_playing: !!j.is_playing,
+        item: j.item ?? null,
+      });
+    } catch (e) {
+      // ignore või logi
+    } finally {
+      if (alive) setTimeout(tick, 2500);
+    }
+  };
+
+  tick();
+  return () => { alive = false; };
+}, [venueId]);
+
+
   const goAdmin = () => {
     if (!hasAdminToken(venueId)) {
       alert("DJ PIN on nõutud. Logi sisse DJ vaates.");
@@ -51,7 +89,6 @@ export default function App() {
     u.searchParams.delete("admin");
     window.location.href = u.toString();
   };
-
 
   function goAudience() {
     if (!venueId) { alert("Genereeri kõigepealt venue ID."); return; }
@@ -278,21 +315,30 @@ useEffect(() => {
           </div>
           <p className="text-gray-400 text-sm">lugude järjekord h22letustega</p>
           
-          {/* Admin link for venue owners */}
-          {venueId === 'demo-venue' && (
-            <button
-              onClick={() => {
-                if (hasAdmin) setShowAdmin(true);
-                else alert("DJ PIN on nõutud. Logi sisse ülal asuva DJ login ribaga.");
-              }}
-              className="mt-2 text-xs text-gray-600 hover:text-[#1DB954] transition-colors flex items-center gap-1 mx-auto"
-            >
-            </button>
-          )}
         </motion.div>
 
         {/* Now Playing */}
-        {nowPlaying && <NowPlaying song={nowPlaying} />}
+        <NowPlayingCard
+          song={
+            nowLive?.item
+              ? {
+                  title:  nowLive.item.name,
+                  artist: nowLive.item.artists,
+                  albumArt: nowLive.item.albumArt,
+                }
+              : (nowPlaying || null) // ← Fallback sinu olemasolevast fetchNowPlaying() tulemist
+          }
+        />
+
+        {nowLive?.item && (
+          <PlaybackProgress
+            isPlaying={nowLive.is_playing}
+            startedAt={nowLive.startedAt}
+            durationMs={nowLive.duration_ms}
+          />
+        )}
+
+
 
         {/* Queue */}
         <div className="space-y-3 mb-6">

@@ -58,6 +58,7 @@ api.get("/queue/:venueId", async (c) => {
     const venueId = c.req.param("venueId");
     const queueItems = await kv.getByPrefix(`queue:${venueId}:`);
     queueItems.sort((a: any, b: any) => (b.hype ?? 0) - (a.hype ?? 0));
+    c.header('Cache-Control', 'no-store');
     return c.json({ queue: queueItems });
   } catch (e) {
     console.error("Error fetching queue:", e);
@@ -70,6 +71,7 @@ api.get("/now-playing/:venueId", async (c) => {
   try {
     const venueId = c.req.param("venueId");
     const nowPlaying = await kv.get(`nowplaying:${venueId}`);
+    c.header('Cache-Control', 'no-store');
     return c.json({ nowPlaying: nowPlaying || null });
   } catch (e) {
     console.error("now-playing error", e);
@@ -121,14 +123,29 @@ api.post("/play-next/:venueId", async (c) => {
       return c.json({ error: "Failed to start playback" }, 500);
     }
 
-    // 3) uuenda nowplaying ja eemalda queue'st
+    let duration_ms: number | undefined = next.duration_ms;
+    if (!duration_ms && next.spotifyId) {
+      const catToken = await getSpotifyAccessToken();
+      if (catToken) {
+        const tr = await fetch(`https://api.spotify.com/v1/tracks/${next.spotifyId}`, {
+          headers: { Authorization: `Bearer ${catToken}` },
+        });
+        if (tr.ok) {
+          const td = await tr.json();
+          duration_ms = td?.duration_ms;
+        }
+      }
+    }
+
     await kv.set(`nowplaying:${venueId}`, {
       title: next.title,
       artist: next.artist,
       albumArt: next.albumArt,
       uri,
-      startedAt: Date.now(),
       id: next.id,
+      spotifyId: next.spotifyId,
+      duration_ms: duration_ms ?? null,
+      startedAt: Date.now(),
     });
     await kv.del(`queue:${venueId}:${next.id}`);
 
@@ -138,6 +155,54 @@ api.post("/play-next/:venueId", async (c) => {
     return c.json({ error: "Failed to play next" }, 500);
   }
 });
+
+api.get("/spotify/now/:venueId", async (c) => {
+  try {
+    const venueId = c.req.param("venueId");
+
+    const token = await getUserAccessTokenForVenue(venueId);
+    const r = await fetch("https://api.spotify.com/v1/me/player", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (r.status === 204) {
+      c.header('Cache-Control','no-store');
+      return c.json({ is_playing: false, progress_ms: 0, duration_ms: 0, startedAt: null, item: null });
+    }
+
+    if (!r.ok) {
+      const t = await r.text();
+      console.error("me/player failed:", t);
+      return c.json({ error: "Failed to read playback state" }, 500);
+    }
+
+    const d = await r.json();
+    const is_playing = !!d?.is_playing;
+    const progress_ms = d?.progress_ms ?? 0;
+    const duration_ms = d?.item?.duration_ms ?? 0;
+
+    const startedAt = is_playing ? Date.now() - progress_ms : null;
+
+    c.header('Cache-Control','no-store');
+    return c.json({
+      is_playing,
+      progress_ms,
+      duration_ms,
+      startedAt,
+      item: d?.item ? {
+        name: d.item.name,
+        artists: (d.item.artists ?? []).map((a: any) => a.name).join(", "),
+        albumArt: d.item.album?.images?.[0]?.url ?? "",
+        uri: d.item.uri,
+        id: d.item.id,
+      } : null
+    });
+  } catch (e) {
+    console.error("spotify/now error:", e);
+    return c.json({ error: "Failed to read playback state" }, 500);
+  }
+});
+
 
 // ———————————————————————————————————————————————————————————
 // HÄÄL (VOTE)
@@ -255,22 +320,57 @@ api.post("/add-song", async (c) => {
   }
 });
 
-app.post('/admin/add-song', async (c) => {
-  const admin = c.req.header('X-Venue-Admin');
-  if (!admin) return c.json({ error: 'missing admin' }, 401);
+api.post('/admin/add-song', async (c) => {
+  try {
+    const admin = c.req.header('X-Venue-Admin');
+    if (!admin) return c.json({ error: 'missing admin' }, 401);
 
-  const { venueId, title, artist, albumArt } = await c.req.json();
-  if (!venueId || !title || !artist) return c.json({ error: 'bad input' }, 400);
+    const { venueId, title, artist, albumArt, uri, spotifyId } = await c.req.json();
+    if (!venueId || !title || !artist) return c.json({ error: 'bad input' }, 400);
 
-  const song = {
-    id: crypto.randomUUID(),
-    title,
-    artist,
-    albumArt: albumArt || '',
-    hype: 0
-  };
+    let trackUri: string | undefined = uri;
+    let trackId: string | undefined = spotifyId;
+    let art: string | undefined = albumArt;
 
-  return c.json({ song });
+    if (!trackUri && !trackId) {
+      const token = await getSpotifyAccessToken();
+      if (token) {
+        const q = encodeURIComponent(`${title} ${artist}`);
+        const sr = await fetch(
+          `https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (sr.ok) {
+          const sd = await sr.json();
+          const t = sd?.tracks?.items?.[0];
+          if (t?.uri && t?.id) {
+            trackUri = t.uri;
+            trackId  = t.id;
+            if (!art) art = t.album?.images?.[0]?.url ?? "";
+          }
+        }
+      }
+    }
+
+    const songId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const queueKey = `queue:${venueId}:${songId}`;
+    const newSong = {
+      id: songId,
+      title,
+      artist,
+      albumArt: art ?? '',
+      uri: trackUri ?? (trackId ? `spotify:track:${trackId}` : undefined),
+      spotifyId: trackId ?? undefined,
+      hype: 0,
+      addedAt: Date.now(),
+    };
+    await kv.set(queueKey, newSong);
+
+    return c.json({ success: true, song: newSong });
+  } catch (e) {
+    console.error('admin/add-song error:', e);
+    return c.json({ error: 'failed to add song' }, 500);
+  }
 });
 
 

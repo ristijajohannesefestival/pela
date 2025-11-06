@@ -9,6 +9,8 @@ import AdminBar from "./AdminBar";
 import { NowPlayingCard } from "./NowPlayingCard";
 import { AddSongSheet } from "./AddSongSheet";
 import { useNavigate } from "react-router-dom";
+import { PlaybackProgress } from "./PlaybackProgress";
+
 
 interface VenueAdminProps {
   venueId?: string;
@@ -38,6 +40,13 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
   const [cooldownMinutes, setCooldownMinutes] = useState<number | undefined>(undefined);
   const navigate = useNavigate();
   const [hasPin, setHasPin] = useState(false);
+  const [nowLive, setNowLive] = useState<{
+  startedAt: number | null;
+  duration_ms: number;
+  is_playing: boolean;
+  item: { name: string; artists: string; albumArt: string; uri: string; id: string } | null;
+  } | null>(null);
+
 
   const venueUrl = venueId ? `${window.location.origin}/?venue=${venueId}` : "";
 
@@ -74,6 +83,42 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
     if (!venueId) return alert("Genereeri venue ID.");
     navigate({ pathname: '/', search: `?venue=${venueId}` });
   }
+
+  useEffect(() => {
+    if (!venueId) return;
+    let alive = true;
+
+    const tick = async () => {
+      try {
+        const r = await fetch(`${BASE}/spotify/now/${encodeURIComponent(venueId)}`, { cache: "no-store" });
+        const j = await r.json();
+        if (!alive) return;
+        setNowLive({
+          startedAt: j.startedAt ?? null,
+          duration_ms: j.duration_ms ?? 0,
+          is_playing: !!j.is_playing,
+          item: j.item ?? null,
+        });
+      } catch (e) {
+        // ignore või logi
+      } finally {
+        if (alive) setTimeout(tick, 2500);
+      }
+    };
+
+    tick();
+    return () => { alive = false; };
+  }, [venueId]);
+
+
+  useEffect(() => {
+    if (!venueId) return;
+    const id = setInterval(() => {
+      loadNow();
+      loadQueue();
+    }, 5000);
+    return () => clearInterval(id);
+  }, [venueId]);
 
   // admin token localstoragest
   useEffect(() => {
@@ -520,7 +565,27 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
             </Button>
           </div>
 
-          <NowPlayingCard song={now || null} />
+          {/* info-kaart (kasuta live item'i infot kui olemas) */}
+          <NowPlayingCard
+            song={
+              nowLive?.item
+                ? {
+                    title: nowLive.item.name,
+                    artist: nowLive.item.artists,
+                    albumArt: nowLive.item.albumArt,
+                  }
+                : (now || null) // fallback sinu olemasolevale now-playing andmele
+            }
+          />
+
+          {/* progress ribana + ajad (kui live item olemas) */}
+          {nowLive?.item && (
+            <PlaybackProgress
+              isPlaying={nowLive.is_playing}
+              startedAt={nowLive.startedAt}
+              durationMs={nowLive.duration_ms}
+            />
+          )}
 
           {nextSong ? (
             <div className="bg-black/40 border border-gray-800 rounded-2xl p-4 mb-2">
