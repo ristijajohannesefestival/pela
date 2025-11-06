@@ -414,15 +414,20 @@ api.get("/spotify/callback", async (c) => {
     }
     const data = await resp.json();
 
-    // salvestame refresh tokeni venue külge (∞ venue’t, 1 app)
-    await kv.set(`spotify:refresh:${venueId}`, {
-      refresh_token: data.refresh_token,
-      obtainedAt: Date.now(),
-      scopesSaved: true,
-    });
+    if (data.refresh_token) {
+      await kv.set(`spotify:refresh:${venueId}`, {
+        refresh_token: data.refresh_token,
+        obtainedAt: Date.now(),
+        scopesSaved: true,
+      });
+    }
 
-    // suuna tagasi sinu Admin UI-sse (muuda vajadusel)
-    return c.redirect(`http://localhost:5173/?venue=${venueId}&admin=true&linked=1`);
+    const FRONTEND_URL = Deno.env.get("FRONTEND_URL")!;
+    const u = new URL(FRONTEND_URL);
+    u.searchParams.set("venue", String(venueId));
+    u.searchParams.set("admin", "true");
+    u.searchParams.set("linked", "1");
+    return c.redirect(u.toString(), 302);
   } catch (e) {
     console.error("callback error:", e);
     return c.text("Callback error", 500);
