@@ -18,8 +18,7 @@ interface VenueAdminProps {
 
 type Device = { id: string; name: string; type: string; is_active: boolean };
 
-const BASE =
-  "https://eahgekmtuyvclxegqolf.supabase.co/functions/v1/make-server-d5eddf57";
+const BASE = import.meta.env.BASE_URL;
 
 export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: VenueAdminProps) {
   const venueFromUrl =
