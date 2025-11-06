@@ -18,7 +18,7 @@ interface VenueAdminProps {
 
 type Device = { id: string; name: string; type: string; is_active: boolean };
 
-const BASE = import.meta.env.BASE_URL;
+const BASE = import.meta.env.VITE_EDGE_BASE;
 
 export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: VenueAdminProps) {
   const venueFromUrl =
