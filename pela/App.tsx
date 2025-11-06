@@ -5,8 +5,6 @@ import { Button } from './components/ui/button';
 import { NowPlaying } from './components/NowPlaying';
 import { QueueItem } from './components/QueueItem';
 import { AddSongSheet } from './components/AddSongSheet';
-import { VenueAdmin } from './components/VenueAdmin';
-import AdminBar from "./components/AdminBar";
 import { 
   fetchQueue, 
   fetchNowPlaying, 
@@ -33,7 +31,6 @@ interface NowPlayingData {
 
 export default function App() {
   const [venueId] = useState(getVenueId());
-  const [showAdmin, setShowAdmin] = useState(isAdminMode());
   const [queue, setQueue] = useState<Song[]>([]);
   const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null);
   const [votedSongs, setVotedSongs] = useState<Set<string>>(new Set());
@@ -43,47 +40,31 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [sessionId] = useState(getSessionId());
 
+  const goAdmin = () => {
+    if (!hasAdminToken(venueId)) {
+      alert("DJ PIN on nõutud. Logi sisse DJ vaates.");
+      return;
+    }
+    const u = new URL(window.location.href);
+    u.pathname = "/dj";
+    u.searchParams.set("venue", venueId);
+    u.searchParams.delete("admin");
+    window.location.href = u.toString();
+  };
+
+
+  function goAudience() {
+    if (!venueId) { alert("Genereeri kõigepealt venue ID."); return; }
+    const u = new URL(window.location.href);
+    u.pathname = "/";
+    u.searchParams.set("venue", venueId);
+    window.location.href = u.toString();
+  }
 
   // Get venue ID from URL parameter, or use demo
 function getVenueId(): string {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get('venue') || 'demo-venue';
-}
-
-function hasAdminToken(vId: string) {
-  try { return !!localStorage.getItem(`adminToken:${vId}`); } catch { return false; }
-}
-
-const [hasAdmin, setHasAdmin] = useState(hasAdminToken(venueId));
-
-
-useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const wantsAdmin = params.get("admin") === "true";
-  const hasToken = !!localStorage.getItem(`adminToken:${venueId}`);
-  if (wantsAdmin && hasToken) {
-    setShowAdmin(true);
-  }
-  if (wantsAdmin && !hasToken) {
-    setShowAdmin(false);
-  }
-}, [venueId]);
-
-// kui venueId muutub, loe token uuesti
-useEffect(() => {
-  setHasAdmin(hasAdminToken(venueId));
-}, [venueId]);
-
-// kui keegi proovib URL-iga admin=true, aga tokenit pole, jää avalehele
-useEffect(() => {
-  if (showAdmin && !hasAdmin) setShowAdmin(false);
-}, [showAdmin, hasAdmin]);
-
-
-// Check if admin mode is enabled
-function isAdminMode(): boolean {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('admin') === 'true';
 }
 
 // Generate or retrieve session ID
@@ -230,16 +211,6 @@ useEffect(() => {
     setIsAddSheetOpen(true);
   };
 
-  // Show admin panel if requested
-  if (showAdmin) {
-    return (
-      <VenueAdmin
-        venueId={venueId !== 'demo-venue' ? venueId : undefined}
-        onGoAudience={() => setShowAdmin(false)}
-      />
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0e0e0e] flex items-center justify-center">
@@ -254,13 +225,6 @@ useEffect(() => {
       </div>
     );
   }
-
-  const goAdmin = () => {
-    setShowAdmin(true);
-    const u = new URL(window.location.href);
-    u.searchParams.set("admin", "true");
-    window.history.replaceState(null, "", u.toString());
-  };
 
   return (
     <div className="min-h-screen bg-[#0e0e0e] text-white">
@@ -326,7 +290,6 @@ useEffect(() => {
             </button>
           )}
         </motion.div>
-        <AdminBar venueId={venueId} onGoAdmin={goAdmin} allowSetPin />
 
         {/* Now Playing */}
         {nowPlaying && <NowPlaying song={nowPlaying} />}

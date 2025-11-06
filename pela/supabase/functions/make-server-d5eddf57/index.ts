@@ -253,6 +253,25 @@ api.post("/add-song", async (c) => {
   }
 });
 
+app.post('/admin/add-song', async (c) => {
+  const admin = c.req.header('X-Venue-Admin');
+  if (!admin) return c.json({ error: 'missing admin' }, 401);
+
+  const { venueId, title, artist, albumArt } = await c.req.json();
+  if (!venueId || !title || !artist) return c.json({ error: 'bad input' }, 400);
+
+  const song = {
+    id: crypto.randomUUID(),
+    title,
+    artist,
+    albumArt: albumArt || '',
+    hype: 0
+  };
+
+  return c.json({ song });
+});
+
+
 // ———————————————————————————————————————————————————————————
 // ADMIN: PIN + SESSIOONID
 // ———————————————————————————————————————————————————————————

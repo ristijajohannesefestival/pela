@@ -101,10 +101,10 @@ export default function AdminBar({
     <div className="mb-4 flex flex-col items-center gap-2">
       {token ? (
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#1DB954]">✅ DJ logged in</span>
+          <span className="text-xs text-[#1DB954]">DJ logged in</span>
           <button
             onClick={onGoAdmin}
-            className="text-xs px-3 py-1 rounded bg-white text-black"
+            className="text-xs px-3 py-1 rounded bg-white text-black hover:bg-[#cbe4d4] hover:text-black hover:scale-105 hover:rounded-2xl cursor-pointer"
           >
             Ava admin
           </button>
