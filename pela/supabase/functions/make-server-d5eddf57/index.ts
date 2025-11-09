@@ -537,6 +537,7 @@ api.get("/spotify/callback", async (c) => {
 
     const FRONTEND_URL = Deno.env.get("FRONTEND_URL")!;
     const u = new URL(FRONTEND_URL);
+    u.pathname = "/dj";   
     u.searchParams.set("venue", String(venueId));
     u.searchParams.set("admin", "true");
     u.searchParams.set("linked", "1");

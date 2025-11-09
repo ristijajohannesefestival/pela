@@ -72,13 +72,16 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
   return () => { alive = false; };
 }, [venueId, adminToken]);
 
-
   useEffect(() => {
-  const u = new URL(window.location.href);
-  if (u.searchParams.get('linked') === '1') {
-    openSpotifyApp();
-  }
-}, []);
+    const sp = new URLSearchParams(location.search);
+    if (sp.get("linked") === "1") {
+      sp.delete("linked");
+      const clean = `${location.pathname}?${sp.toString()}`;
+      window.history.replaceState(null, "", clean);
+    }
+  }, []);
+
+
 
   function openSpotifyApp() {
   const webUrl = 'https://open.spotify.com/';
