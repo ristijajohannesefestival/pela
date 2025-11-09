@@ -33,13 +33,13 @@ export async function fetchQueue(venueId: string): Promise<Song[]> {
 }
 
 export async function fetchSkipStatus(venueId: string) {
-  const r = await fetch(`${BASE}/skip/status/${encodeURIComponent(venueId)}`, { cache: 'no-store' });
+  const r = await fetch(`${API_BASE}/skip/status/${encodeURIComponent(venueId)}`, { cache: 'no-store' });
   if (!r.ok) throw new Error('Failed to fetch skip status');
   return await r.json();
 }
 
 export async function sendSkipVote(venueId: string, sessionId: string) {
-  const r = await fetch(`${BASE}/skip/vote`, {
+  const r = await fetch(`${API_BASE}/skip/vote`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ venueId, sessionId }),

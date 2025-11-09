@@ -56,11 +56,11 @@ export default function App() {
   const BASE = import.meta.env.VITE_EDGE_BASE as string;
 
 
-  async function loadQueue(venueId: string) {
-    const data = await fetchQueue(venueId);
+  async function loadQueue(id: string = venueId) {
+    const data = await fetchQueue(id);
     setQueue(data);
     setIsLiveAnimating(true);
-    setTimeout(() => setIsLiveAnimating(false), 1000); 
+    setTimeout(() => setIsLiveAnimating(false), 1000);
   }
 
   useEffect(() => {
