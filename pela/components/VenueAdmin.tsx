@@ -53,6 +53,42 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
   const [pin, setPin] = useState("");
   const [adminToken, setAdminToken] = useState<string | null>(null);
 
+  function openSpotifyApp() {
+  const webUrl = 'https://open.spotify.com/';
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  const appUrl = 'spotify:'; 
+
+  const androidIntent =
+    'intent://#Intent;scheme=spotify;package=com.spotify.music;' +
+    'S.browser_fallback_url=' + encodeURIComponent(webUrl) + ';end';
+
+  // fallback timeout
+  const failover = setTimeout(() => {
+    // Kui äpp ei neelanud fookust/ei avanud, mine web’i
+    window.location.href = webUrl;
+  }, 2000);
+
+  // Kui tab kaotab nähtavuse (äppi mindi), katkesta fallback
+  const cancel = () => { clearTimeout(failover); document.removeEventListener('visibilitychange', cancel); };
+  document.addEventListener('visibilitychange', cancel);
+
+  try {
+    if (isAndroid) {
+      // androidi chrome nt intent://
+      window.location.href = androidIntent;
+    } else {
+      // iOS + desktop
+      window.location.href = appUrl;
+    }
+  } catch {
+    clearTimeout(failover);
+    window.location.href = webUrl;
+  }
+}
+
+
 
     const audienceUrl = useMemo(
     () => (venueId ? `${window.location.origin}/?venue=${venueId}` : ""),
@@ -528,6 +564,10 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
           <Button onClick={selectPlaybackDevice} variant="outline" className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer" disabled={!deviceId}>
             Use this device
           </Button>
+          <Button onClick={openSpotifyApp} variant="outline" className="text-black bg-white hover:bg-[#cbe4d4] hover:text-black hover:rounded-2xl cursor-pointer">
+            Open Spotify app
+          </Button>
+
         </div>
         <p className="text-xs text-gray-500">
           Ava Spotify äpp ja hoia seade online/active.
