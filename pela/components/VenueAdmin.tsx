@@ -403,8 +403,8 @@ function PlaybackControls({ venueId, isPlaying }: { venueId: string; isPlaying: 
 
   async function onToggle() {
     try {
-      if (isPlaying) await adminPause(venueId, token);
-      else           await adminResume(venueId, token);
+      if (isPlaying) await apiAdminPause(venueId, token);
+      else           await apiAdminResume(venueId, token);
     } catch (e) {
       alert((e as Error).message);
     }
