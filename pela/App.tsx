@@ -56,6 +56,13 @@ export default function App() {
   const BASE = import.meta.env.VITE_EDGE_BASE as string;
 
 
+  async function loadQueue(venueId: string) {
+    const data = await fetchQueue(venueId);
+    setQueue(data);
+    setIsLiveAnimating(true);
+    setTimeout(() => setIsLiveAnimating(false), 1000); 
+  }
+
   useEffect(() => {
   if (!venueId) return;
   let alive = true;
@@ -164,14 +171,12 @@ useEffect(() => {
         if (venueId === 'demo-venue') {
           await initDemoVenue(venueId);
         }
-        
-        // Load queue and now playing
-        const [queueData, nowPlayingData] = await Promise.all([
-          fetchQueue(venueId),
+        await loadQueue(venueId);
+
+        const [nowPlayingData] = await Promise.all([
           fetchNowPlaying(venueId),
         ]);
-        
-        setQueue(queueData);
+
         setNowPlaying(nowPlayingData);
         
         // Load voted songs from localStorage
@@ -192,8 +197,7 @@ useEffect(() => {
   // Set up realtime subscription to queue changes
   useEffect(() => {
     const supabase = createClient();
-    
-    // Subscribe to KV store changes
+
     const channel = supabase
       .channel('queue-changes')
       .on(
@@ -202,18 +206,13 @@ useEffect(() => {
           event: '*',
           schema: 'public',
           table: 'kv_store_d5eddf57',
-          filter: `key=like.queue:${venueId}:%`
+          filter: `key=like.queue:${venueId}:%`,
         },
-        async (payload: any) => {
-          console.log('Queue updated:', payload);
-          // Refresh queue when changes detected
+        async () => {
           try {
-            const queueData = await fetchQueue(venueId);
-            setQueue(queueData);
-            setIsLiveAnimating(true);
-            setTimeout(() => setIsLiveAnimating(false), 1000);
-          } catch (error) {
-            console.error('Failed to refresh queue:', error);
+            await loadQueue(venueId);
+          } catch (e) {
+            console.error('refresh queue fail:', e);
           }
         }
       )
@@ -224,17 +223,18 @@ useEffect(() => {
     };
   }, [venueId]);
 
+
+
+
   // Poll for updates every 5 seconds as fallback
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const queueData = await fetchQueue(venueId);
-        setQueue(queueData);
-        setIsLiveAnimating(true);
-        setTimeout(() => setIsLiveAnimating(false), 1000);
-      } catch (error) {
-        console.error('Failed to poll queue:', error);
-      }
+    if (!venueId) return;
+
+    // tee kohe 1x värskendus
+    loadQueue(venueId).catch(e => console.error('initial queue load fail:', e));
+
+    const interval = setInterval(() => {
+      loadQueue(venueId).catch(e => console.error('poll queue fail:', e));
     }, 5000);
 
     return () => clearInterval(interval);
