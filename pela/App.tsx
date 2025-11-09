@@ -55,6 +55,11 @@ export default function App() {
 } | null>(null);
   const BASE = import.meta.env.VITE_EDGE_BASE as string;
 
+  async function loadQueue(id: string = venueId) {
+  const data = await fetchQueue(id);
+  setQueue(data);
+}
+
 
   async function loadQueue(venueId: string) {
     const data = await fetchQueue(venueId);
@@ -167,32 +172,25 @@ function getSessionId(): string {
 useEffect(() => {
   async function init() {
     try {
-      // Initialize demo venue with sample data (only for demo-venue)
-        if (venueId === 'demo-venue') {
-          await initDemoVenue(venueId);
-        }
-        await loadQueue(venueId);
-
-        const [nowPlayingData] = await Promise.all([
-          fetchNowPlaying(venueId),
-        ]);
-
-        setNowPlaying(nowPlayingData);
-        
-        // Load voted songs from localStorage
-        const voted = localStorage.getItem(`voted-${venueId}`);
-        if (voted) {
-          setVotedSongs(new Set(JSON.parse(voted)));
-        }
-      } catch (error) {
-        console.error('Failed to initialize:', error);
-      } finally {
-        setIsLoading(false);
+      if (venueId === 'demo-venue') {
+        await initDemoVenue(venueId);
       }
-    }
+      await loadQueue(venueId);
 
-    init();
-  }, [venueId]);
+      const nowPlayingData = await fetchNowPlaying(venueId);
+      setNowPlaying(nowPlayingData);
+
+      // lae votedSongs
+      const voted = localStorage.getItem(`voted-${venueId}`);
+      if (voted) setVotedSongs(new Set(JSON.parse(voted)));
+    } catch (e) {
+      console.error('Failed to initialize:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+  init();
+}, [venueId]);
 
   // Set up realtime subscription to queue changes
   useEffect(() => {
@@ -206,39 +204,30 @@ useEffect(() => {
           event: '*',
           schema: 'public',
           table: 'kv_store_d5eddf57',
-          filter: `key=like.queue:${venueId}:%`,
+          filter: `key=like.queue:${venueId}:%`
         },
         async () => {
-          try {
-            await loadQueue(venueId);
-          } catch (e) {
-            console.error('refresh queue fail:', e);
-          }
+          try { await loadQueue(venueId); } 
+          catch (e) { console.error('refresh queue fail:', e); }
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [venueId]);
+
 
 
 
 
   // Poll for updates every 5 seconds as fallback
   useEffect(() => {
-    if (!venueId) return;
-
-    // tee kohe 1x värskendus
-    loadQueue(venueId).catch(e => console.error('initial queue load fail:', e));
-
     const interval = setInterval(() => {
       loadQueue(venueId).catch(e => console.error('poll queue fail:', e));
     }, 5000);
-
     return () => clearInterval(interval);
   }, [venueId]);
+
 
   const handleVote = async (songId: string) => {
     if (votedSongs.has(songId)) return;
