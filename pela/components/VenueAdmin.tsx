@@ -397,30 +397,34 @@ export function VenueAdmin({ venueId: initialVenueId, onGoAudience, nextSong }: 
     saveToken(null);
   }
 
-  // DJ-le sobiv kontrolliriba (nt VenueAdmin komponendis)
-function PlaybackControls({ venueId, isPlaying }: { venueId: string; isPlaying: boolean }) {
-  const token = localStorage.getItem(`adminToken:${venueId}`) || '';
-
-  async function onToggle() {
-    try {
-      if (isPlaying) await apiAdminPause(venueId, token);
-      else           await apiAdminResume(venueId, token);
-    } catch (e) {
-      alert((e as Error).message);
+  function PlaybackControls({ venueId, isPlaying, adminToken }: { venueId: string; isPlaying: boolean; adminToken: string | null }) {
+    async function onToggle() {
+      if (!adminToken) {
+        alert("Logi adminina (PIN) sisse.");
+        return;
+      }
+      try {
+        if (isPlaying) await apiAdminPause(venueId, adminToken);
+        else           await apiAdminResume(venueId, adminToken);
+      } catch (e) {
+        alert((e as Error).message);
+      }
     }
-  }
 
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={onToggle}
-        className="px-3 py-1 rounded-full border border-[#1DB954] text-[#1DB954] hover:bg-[#1DB954]/10 text-sm"
-      >
-        {isPlaying ? 'Pause' : 'Play'}
-      </button>
-    </div>
-  );
-}
+    return (
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onToggle}
+          className="px-3 py-1 rounded-full border border-[#1DB954] text-[#1DB954] hover:bg-[#1DB954]/10 text-sm"
+          disabled={!adminToken}
+          aria-disabled={!adminToken}
+          title={adminToken ? "" : "Only for logged-in admin (PIN)"}
+        >
+          {isPlaying ? "Pause" : "Play"}
+        </button>
+      </div>
+    );
+  }
 
 
 
@@ -687,7 +691,9 @@ function PlaybackControls({ venueId, isPlaying }: { venueId: string; isPlaying: 
             >
               Reload Now Playing
             </Button>
-            <PlaybackControls venueId={venueId} isPlaying={!!nowLive?.is_playing} />
+              {adminToken ? (
+                <PlaybackControls venueId={venueId} isPlaying={!!nowLive?.is_playing} adminToken={adminToken} />
+              ) : null}
           </div>
 
           {/* info-kaart (kasuta live item'i infot kui olemas) */}

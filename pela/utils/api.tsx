@@ -50,6 +50,7 @@ export async function sendSkipVote(venueId: string, sessionId: string) {
 }
 
 export async function adminPause(venueId: string, token: string) {
+  if (!token) throw new Error("Admin login required");
   const r = await fetch(`${API_BASE}/spotify/pause/${encodeURIComponent(venueId)}`, {
     method: 'POST',
     headers: { 'X-Venue-Admin': token },
@@ -58,6 +59,7 @@ export async function adminPause(venueId: string, token: string) {
 }
 
 export async function adminResume(venueId: string, token: string) {
+  if (!token) throw new Error("Admin login required");
   const r = await fetch(`${API_BASE}/spotify/resume/${encodeURIComponent(venueId)}`, {
     method: 'POST',
     headers: { 'X-Venue-Admin': token },
